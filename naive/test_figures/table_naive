@@ -1,0 +1,4 @@
+['files', 'throughut', 'rate', 'reward', 'freezing', '#freezing', 'latency', 'switch', 'sync', 'starting_time']
+['naive_2s_70ms_loss0', 4.504, 1543.0, 1.395, 0.299, 2, 2.636, 15.0, 0.0, 2339.0]
+['naive_2s_norway_car_10', 1.862, 568.0, 0.416, 0.271, 2, 2.608, 10.0, 0.0, 2339.0]
+

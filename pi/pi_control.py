@@ -81,9 +81,8 @@ class controller(object):
 		self.target_buffer += freezing
 
 	def choose_rate(self, est_bw, real_last_bw, curr_buffer, freezing):
-		tuned_buffer = curr_buffer - freezing
-		print "Tuned buffer: ", tuned_buffer
-
+		tuned_buffer = np.maximum(curr_buffer - freezing, 0.0)
+		# print "Tuned buffer: ", tuned_buffer
 		if tuned_buffer < self.target_buffer * LOWEST_BUFF_THRES:
 			
 			# # While buffer length is less than the lowest threshold
@@ -114,9 +113,9 @@ class controller(object):
 			return self.last_rate
 
 		f = self.cal_F(tuned_buffer)	# Use curr_buffer or tuned_buff 
-		print "F value is: ", f
+		# print "F value is: ", f
 		tuned_bw = est_bw * f
-		print "Tunned bw: ", tuned_bw
+		# print "Tunned bw: ", tuned_bw
 		updated_m = self.update_m(tuned_buffer)
 		# print(f, tuned_bw, updated_m)
 		if tuned_bw > BITRATE[self.last_rate]:
