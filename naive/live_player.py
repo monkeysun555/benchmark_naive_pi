@@ -362,4 +362,5 @@ class Live_Player(object):
 	def get_throughput_trace(self):
 		return self.throughput_trace
 
-
+	def get_time_trace(self):
+		return self.time_trace
