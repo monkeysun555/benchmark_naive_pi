@@ -4,6 +4,7 @@ import numpy as np
 import live_player
 import live_server
 import load
+import math 
 
 IF_NEW = 1
 IF_ALL_TESTING = 1		# IF THIS IS 1, IF_NEW MUST BE 1
@@ -25,7 +26,7 @@ CHUNK_IN_SEG = SEG_DURATION/CHUNK_DURATION
 CHUNK_SEG_RATIO = CHUNK_DURATION/SEG_DURATION
 
 # Initial buffer length on server side
-SERVER_START_UP_TH = 2000.0											# <========= TO BE MODIFIED. TEST WITH DIFFERENT VALUES
+SERVER_START_UP_TH = 4000.0											# <========= TO BE MODIFIED. TEST WITH DIFFERENT VALUES
 # how user will start playing video (user buffer)
 USER_START_UP_TH = 2000.0
 # set a target latency, then use fast playing to compensate
@@ -34,11 +35,12 @@ USER_FREEZING_TOL = 3000.0											# Single time freezing time upper bound
 USER_LATENCY_TOL = SERVER_START_UP_TH + USER_FREEZING_TOL			# Accumulate latency upperbound
 
 ACTION_REWARD = 1.0 * CHUNK_SEG_RATIO	
-REBUF_PENALTY = 3.0		# for second
+REBUF_PENALTY = 6.0		# for second
 SMOOTH_PENALTY = 1.0
-LONG_DELAY_PENALTY = 5.0 * CHUNK_SEG_RATIO 
-LONG_DELAY_PENALTY_BASE = 1.2	# for second
-MISSING_PENALTY = 3.0 * CHUNK_SEG_RATIO			# not included
+LONG_DELAY_PENALTY = 4.0 * CHUNK_SEG_RATIO 
+CONST = 6.0
+X_RATIO = 1.0
+MISSING_PENALTY = 6.0 * CHUNK_SEG_RATIO 		# not included
 # UNNORMAL_PLAYING_PENALTY = 1.0 * CHUNK_FRAG_RATIO
 # FAST_PLAYING = 1.1		# For 1
 # NORMAL_PLAYING = 1.0	# For 0
@@ -56,7 +58,7 @@ if not IF_NEW:
 	TRACE_NAME = '70ms_loss0.5_m5.txt'
 else:
 	DATA_DIR = '../../new_traces/test_sim_traces/'
-	TRACE_NAME = 'norway_car_10'
+	TRACE_NAME = 'norway_tram_4'
 
 if not IF_ALL_TESTING:
 	LOG_FILE_DIR = './test_results'
@@ -64,6 +66,8 @@ if not IF_ALL_TESTING:
 else:
 	LOG_FILE_DIR = './all_test_results'
 	LOG_FILE = LOG_FILE_DIR + '/naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's'
+	ALL_TESTING_DIR = '../../algorithms/all_results/'
+	ALL_TESTING_FILE = ALL_TESTING_DIR + 'naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's.txt'
 
 # TRAIN_TRACES = './traces/bandwidth/'
 
@@ -77,6 +81,9 @@ def naive_choose_rate(est_bw):
 		if BITRATE[i] <= true_bw:
 			return i
 	return 0
+
+def lat_penalty(x):
+	return 1.0/(1+math.exp(CONST-X_RATIO*x)) - 1.0/(1+math.exp(CONST))
 
 def update_naive_rec(pred_tp, new_tp):
 	curr_tp = np.roll(pred_tp, -1, axis=0)
@@ -128,6 +135,10 @@ def t_main():
 	if not os.path.isdir(LOG_FILE_DIR):
 		os.makedirs(LOG_FILE_DIR)
 
+	if not os.path.isdir(ALL_TESTING_DIR):
+		os.makedirs(ALL_TESTING_DIR)
+	all_testing_log = open(ALL_TESTING_FILE, 'wb')
+
 	cooked_times, cooked_bws, cooked_names = load.new_loadBandwidth(DATA_DIR)
 	for i in range(len(cooked_times)):
 		cooked_time = cooked_times[i]
@@ -152,6 +163,10 @@ def t_main():
 		starting_time_idx = player.get_time_idx()
 		buffer_length = 0.0
 		r_batch = []
+		f_batch = []
+		a_batch = []
+		c_batch = []
+		l_batch = []
 		last_bit_rate = -1
 		naive_est_bw = 0.0
 
@@ -184,10 +199,11 @@ def t_main():
 				download_chunk_end_idx = download_chunk_info[2]
 				download_chunk_size = download_chunk_info[3][bit_rate]		# Might be several chunks
 				chunk_number = download_chunk_end_idx - download_chunk_idx + 1
+				assert chunk_number == 1
 				server_wait_time = 0.0
 				sync = 0
 				missing_count = 0
-				if download_seg_idx > TEST_DURATION:
+				if download_seg_idx >= TEST_DURATION:
 					break
 				real_chunk_size, download_duration, freezing, time_out, player_state = player.fetch(download_chunk_size, 
 																		download_seg_idx, download_chunk_idx, take_action, chunk_number)
@@ -227,12 +243,14 @@ def t_main():
 					log_last_bit_rate = log_bit_rate
 				else:
 					log_last_bit_rate = np.log(BITRATE[last_bit_rate] / BITRATE[0])
+				
+				c_batch.append(np.abs(BITRATE[bit_rate] - BITRATE[last_bit_rate]))
 				last_bit_rate = bit_rate	# Do no move this term. This is for chunk continuous calcualtion
 				# print(log_bit_rate, log_last_bit_rate)
 				reward = ACTION_REWARD * log_bit_rate * chunk_number \
 						- REBUF_PENALTY * freezing / MS_IN_S \
 						- SMOOTH_PENALTY * np.abs(log_bit_rate - log_last_bit_rate) \
-						- LONG_DELAY_PENALTY*(LONG_DELAY_PENALTY_BASE**(ReLU(latency-TARGET_LATENCY)/ MS_IN_S)-1) * chunk_number \
+						- LONG_DELAY_PENALTY * lat_penalty(latency/ MS_IN_S) * chunk_number \
 						- MISSING_PENALTY * missing_count
 						# - UNNORMAL_PLAYING_PENALTY*(playing_speed-NORMAL_PLAYING)*download_duration/MS_IN_S
 				# print(reward)
@@ -263,6 +281,9 @@ def t_main():
 					take_action = 1
 					naive_tp_rec = update_naive_rec(naive_tp_rec, current_naive_tp * KB_IN_MB)
 					r_batch.append(action_reward)
+					f_batch.append(seg_freezing)
+					a_batch.append(BITRATE[bit_rate])
+					l_batch.append(latency)
 
 					log_file.write(	str(server.get_time()) + '\t' +
 								    str(BITRATE[bit_rate]) + '\t' +
@@ -290,6 +311,17 @@ def t_main():
 		log_file.write('\n' + str(starting_time))
 		log_file.write('\n')
 		log_file.close()
+
+		#write to all testing
+		all_testing_log.write(cooked_name + '\t')
+		all_testing_log.write(str(np.sum(r_batch)) + '\t')
+		all_testing_log.write(str(np.mean(a_batch)) + '\t')
+		all_testing_log.write(str(np.sum(f_batch)) + '\t')
+		all_testing_log.write(str(np.mean(c_batch)) + '\t')
+		all_testing_log.write(str(np.mean(l_batch)) + '\t')
+
+		all_testing_log.write('\n')
+	all_testing_log.close()
 
 
 def main():
@@ -398,13 +430,13 @@ def main():
 			if last_bit_rate == -1:
 				log_last_bit_rate = log_bit_rate
 			else:
-				log_last_bit_rate = np.log(BITRATE[last_bit_rate] / BITRATE[0])
+				log_last_bit_rate = np.log(BITRATE[last_bit_rate] / BITRATE[0])			
 			last_bit_rate = bit_rate	# Do no move this term. This is for chunk continuous calcualtion
 			# print(log_bit_rate, log_last_bit_rate)
 			reward = ACTION_REWARD * log_bit_rate * chunk_number \
 					- REBUF_PENALTY * freezing / MS_IN_S \
 					- SMOOTH_PENALTY * np.abs(log_bit_rate - log_last_bit_rate) \
-					- LONG_DELAY_PENALTY*(LONG_DELAY_PENALTY_BASE**(ReLU(latency-TARGET_LATENCY)/ MS_IN_S)-1) * chunk_number \
+					- LONG_DELAY_PENALTY * lat_penalty(latency/ MS_IN_S) * chunk_number \
 					- MISSING_PENALTY * missing_count
 					# - UNNORMAL_PLAYING_PENALTY*(playing_speed-NORMAL_PLAYING)*download_duration/MS_IN_S
 			# print(reward)
@@ -439,7 +471,6 @@ def main():
 				else:
 					take_action = 1
 					naive_tp_rec = update_naive_rec(naive_tp_rec, current_naive_tp * KB_IN_MB)
-					r_batch.append(action_reward)
 
 					log_file.write(	str(server.get_time()) + '\t' +
 								    str(BITRATE[bit_rate]) + '\t' +

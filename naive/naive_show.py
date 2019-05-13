@@ -278,7 +278,8 @@ def main():
 	results = os.listdir(RESULT_DIR)
 	file_records = []
 	for data in results:
-		if 'txt' not in data:
+		print data
+		if 'naive' not in data:
 			continue
 		file_info = []
 		file_path = RESULT_DIR + data
@@ -400,8 +401,8 @@ def main():
 
 
 	if SAVE:
-		for p in tp_figs:
-			p[2].savefig(FIGURES_DIR + p[0] + '_' + p[1] + '.eps', format='eps', dpi=1000, figsize=(30, 10))
+		# for p in tp_figs:
+		# 	p[2].savefig(FIGURES_DIR + p[0] + '_' + p[1] + '.eps', format='eps', dpi=1000, figsize=(30, 10))
 
 		# for p in reward_figs:
 		# 	p[2].savefig(FIGURES_DIR + p[0] + '_' + p[1] + '.eps', format='eps', dpi=1000, figsize=(30, 10))
