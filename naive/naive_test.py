@@ -6,7 +6,7 @@ import live_server
 import load
 import math 
 
-IF_NEW = 1
+IF_NEW = 0
 IF_ALL_TESTING = 1		# IF THIS IS 1, IF_NEW MUST BE 1
 # New bitrate setting, 6 actions, correspongding to 240p, 360p, 480p, 720p, 1080p and 1440p(2k)
 BITRATE = [300.0, 500.0, 1000.0, 2000.0, 3000.0, 6000.0]
@@ -54,7 +54,7 @@ RATIO_HIGH_5 = 1.0			# This is the highest ratio between first chunk and the sum
 NAIVE_PRE_STEP = 5
 
 if not IF_NEW:
-	DATA_DIR = '../../bw_traces/'
+	DATA_DIR = '../../bw_traces_test/cooked_test_traces/'
 	TRACE_NAME = '70ms_loss0.5_m5.txt'
 else:
 	DATA_DIR = '../../new_traces/test_sim_traces/'
@@ -63,11 +63,18 @@ else:
 if not IF_ALL_TESTING:
 	LOG_FILE_DIR = './test_results'
 	LOG_FILE = LOG_FILE_DIR + '/naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's'
-else:
-	LOG_FILE_DIR = './all_test_results'
-	LOG_FILE = LOG_FILE_DIR + '/naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's'
-	ALL_TESTING_DIR = '../../algorithms/all_results/'
-	ALL_TESTING_FILE = ALL_TESTING_DIR + 'naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's.txt'
+else:	
+	if IF_NEW:
+		LOG_FILE_DIR = './all_test_results'
+		LOG_FILE = LOG_FILE_DIR + '/naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's'
+		ALL_TESTING_DIR = '../../algorithms/all_results/'
+		ALL_TESTING_FILE = ALL_TESTING_DIR + 'naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's.txt'
+	else:
+		LOG_FILE_DIR = './all_test_results_old'
+		LOG_FILE = LOG_FILE_DIR + '/naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's'
+		ALL_TESTING_DIR = '../../algorithms/all_results_old/'
+		ALL_TESTING_FILE = ALL_TESTING_DIR + 'naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's.txt'
+	
 
 # TRAIN_TRACES = './traces/bandwidth/'
 
@@ -139,7 +146,11 @@ def t_main():
 		os.makedirs(ALL_TESTING_DIR)
 	all_testing_log = open(ALL_TESTING_FILE, 'wb')
 
-	cooked_times, cooked_bws, cooked_names = load.new_loadBandwidth(DATA_DIR)
+	if IF_NEW:
+		cooked_times, cooked_bws, cooked_names = load.new_loadBandwidth(DATA_DIR)
+	else:
+		cooked_times, cooked_bws, cooked_names = load.loadBandwidth(DATA_DIR)
+
 	for i in range(len(cooked_times)):
 		cooked_time = cooked_times[i]
 		cooked_bw = cooked_bws[i]
@@ -184,6 +195,7 @@ def t_main():
 
 			naive_est_bw = predict_naive_tp(naive_tp_rec)
 			bit_rate = naive_choose_rate(naive_est_bw)
+			c_batch.append(np.abs(BITRATE[bit_rate] - BITRATE[last_bit_rate]))
 			seg_freezing = 0.0	# For next seg
 			seg_wait = 0.0
 
@@ -244,7 +256,6 @@ def t_main():
 				else:
 					log_last_bit_rate = np.log(BITRATE[last_bit_rate] / BITRATE[0])
 				
-				c_batch.append(np.abs(BITRATE[bit_rate] - BITRATE[last_bit_rate]))
 				last_bit_rate = bit_rate	# Do no move this term. This is for chunk continuous calcualtion
 				# print(log_bit_rate, log_last_bit_rate)
 				reward = ACTION_REWARD * log_bit_rate * chunk_number \
@@ -504,7 +515,7 @@ def main():
 
 if __name__ == '__main__':
 	if IF_ALL_TESTING:
-		assert IF_NEW == 1
+		# assert IF_NEW == 1
 		t_main()
 	else:
 		main()
