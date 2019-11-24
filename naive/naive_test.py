@@ -12,6 +12,10 @@ IF_ALL_TESTING = 1		# IF THIS IS 1, IF_NEW MUST BE 1
 BITRATE = [300.0, 500.0, 1000.0, 2000.0, 3000.0, 6000.0]
 # BITRATE = [300.0, 6000.0]
 NAIVE_BW_RATIO = 0.5
+if not IF_NEW:
+	NAIVE_BW_RATIO = 0.8
+else:
+	NAIVE_BW_RATIO = 0.8
 
 RANDOM_SEED = 13
 RAND_RANGE = 1000
@@ -26,7 +30,7 @@ CHUNK_IN_SEG = SEG_DURATION/CHUNK_DURATION
 CHUNK_SEG_RATIO = CHUNK_DURATION/SEG_DURATION
 
 # Initial buffer length on server side
-SERVER_START_UP_TH = 2000.0											# <========= TO BE MODIFIED. TEST WITH DIFFERENT VALUES
+SERVER_START_UP_TH = 4000.0											# <========= TO BE MODIFIED. TEST WITH DIFFERENT VALUES
 # how user will start playing video (user buffer)
 USER_START_UP_TH = 2000.0
 # set a target latency, then use fast playing to compensate
@@ -318,7 +322,10 @@ def t_main():
 		log_file.write('\t'.join(str(tp) for tp in tp_record))
 		log_file.write('\n')
 		log_file.write('\t'.join(str(time) for time in time_record))
-		# log_file.write('\n' + str(IF_NEW))
+		ave_bw = np.sum([tp_record[i]*(time_record[i+1] - time_record[i]) for i in range(len(time_record)-1)])/(time_record[-1] - time_record[0])
+		log_file.write('\n' + str(ave_bw))
+		log_file.write('\n' + str(np.mean(tp_record)))
+		log_file.write('\n' + str(np.var(tp_record)))
 		log_file.write('\n' + str(starting_time))
 		log_file.write('\n')
 		log_file.close()
