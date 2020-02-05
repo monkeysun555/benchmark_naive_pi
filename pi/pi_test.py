@@ -7,7 +7,7 @@ import load
 import pi_control as pi
 import math 
 
-IF_NEW = 0
+IF_NEW = 1
 IF_ALL_TESTING = 1		# IF THIS IS 1, IF_NEW MUST BE 1
 # New bitrate setting, 6 actions, correspongding to 240p, 360p, 480p, 720p, 1080p and 1440p(2k)
 BITRATE = [300.0, 500.0, 1000.0, 2000.0, 3000.0, 6000.0]
@@ -137,7 +137,7 @@ def t_main():
 
 	if not os.path.isdir(ALL_TESTING_DIR):
 		os.makedirs(ALL_TESTING_DIR)
-	all_testing_log = open(ALL_TESTING_FILE, 'wb')
+	all_testing_log = open(ALL_TESTING_FILE, 'w')
 
 	if IF_NEW:
 		cooked_times, cooked_bws, cooked_names = load.new_loadBandwidth(DATA_DIR)
@@ -159,9 +159,9 @@ def t_main():
 		# pi_controller = pi.controller(TARGET_LATENCY)
 		pi_controller = pi.controller(SERVER_START_UP_TH)
 		initial_delay = server.get_time() - player.get_playing_time()	# This initial delay, cannot be reduced, all latency is calculated based on this
-		print initial_delay, cooked_name
+		print(initial_delay, cooked_name)
 		log_path = LOG_FILE + '_' + cooked_name
-		log_file = open(log_path, 'wb')
+		log_file = open(log_path, 'w')
 
 		init = 1
 		starting_time = server.get_time()	# Server starting time
@@ -193,7 +193,10 @@ def t_main():
 			# pi_est_bw = estimate_bw_h(pi_tp_rec)
 			# print pi_tp_rec
 			bit_rate = pi_controller.choose_rate(pi_est_bw, INIT_BW, player.get_buffer_length(), seg_freezing)
-			c_batch.append(np.abs(BITRATE[bit_rate] - BITRATE[last_bit_rate]))
+			if last_bit_rate == -1:
+				c_batch.append(0.0)
+			else:
+				c_batch.append(np.abs(BITRATE[bit_rate] - BITRATE[last_bit_rate]))
 			# print "Choosed action: ", bit_rate
 			seg_freezing = 0.0	# For next seg
 			seg_wait = 0.0
@@ -348,9 +351,9 @@ def main():
 	# pi_controller = pi.controller(TARGET_LATENCY)
 	pi_controller = pi.controller(SERVER_START_UP_TH)
 	initial_delay = server.get_time() - player.get_playing_time()	# This initial delay, cannot be reduced, all latency is calculated based on this
-	print initial_delay
+	print(initial_delay)
 	log_path = LOG_FILE + '_' + TRACE_NAME
-	log_file = open(log_path, 'wb')
+	log_file = open(log_path, 'w')
 
 	init = 1
 	starting_time = server.get_time()	# Server starting time
@@ -362,7 +365,7 @@ def main():
 	seg_freezing = 0.0	# For pi buffer tunning
 
 	for i in range(TEST_DURATION):
-		print "Current index: ", i
+		print("Current index: ", i)
 		if init: 
 			if CHUNK_IN_SEG == 5:
 				ratio = np.random.uniform(RATIO_LOW_5, RATIO_HIGH_5)
@@ -374,9 +377,9 @@ def main():
 			init = 0
 		pi_est_bw = estimate_bw(pi_tp_rec)
 		# pi_est_bw = estimate_bw_h(pi_tp_rec)
-		print pi_tp_rec
+		print(pi_tp_rec)
 		bit_rate = pi_controller.choose_rate(pi_est_bw, INIT_BW, player.get_buffer_length(), seg_freezing)
-		print "Choosed action: ", bit_rate
+		print("Choosed action: ", bit_rate)
 		seg_freezing = 0.0	# For next seg
 		seg_wait = 0.0
 		# bit_rate = upper_actions[i]		# Get optimal actions
@@ -419,7 +422,7 @@ def main():
 			# Disable sync for current situation
 			if sync:
 				if not IF_NEW:
-					print "Should not happen!"
+					print("Should not happen!")
 					break	# No resync here
 				# To sync player, enter start up phase, buffer becomes zero
 				sync_time, missing_count = server.sync_encoding_buffer()

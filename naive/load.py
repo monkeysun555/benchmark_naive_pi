@@ -17,7 +17,7 @@ def loadBandwidth(data_dir = DATA_DIR):
 		throughput_trace = []
 		time = 0.0
 		# print(data)
-		with open(file_path, 'rb') as f:
+		with open(file_path, 'r') as f:
 			for line in f:
 				# parse = line.split(',')
 				parse = line.strip('\n')
@@ -44,7 +44,7 @@ def new_loadBandwidth(data_dir = DATA_DIR):
 		throughput_trace = []
 		# time = 0.0
 		# print(data)
-		with open(file_path, 'rb') as f:
+		with open(file_path, 'r') as f:
 			for line in f:
 				# parse = line.split(',')
 				parse = line.strip('\n').split()
@@ -65,7 +65,7 @@ def new_load_single_trace(data_dir = TRACE_NAME):
 	throughput_trace = []
 	# time = 0.0
 	# print(data)
-	with open(file_path, 'rb') as f:
+	with open(file_path, 'r') as f:
 		for line in f:
 			# parse = line.split(',')
 			parse = line.strip('\n').split()
@@ -84,7 +84,7 @@ def load_single_trace(data_dir = TRACE_NAME):
 	throughput_trace = []
 	time = 0.0
 	# print(data)
-	with open(file_path, 'rb') as f:
+	with open(file_path, 'r') as f:
 		for line in f:
 			# parse = line.split(',')
 			parse = line.strip('\n')

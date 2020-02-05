@@ -30,7 +30,7 @@ CHUNK_IN_SEG = SEG_DURATION/CHUNK_DURATION
 CHUNK_SEG_RATIO = CHUNK_DURATION/SEG_DURATION
 
 # Initial buffer length on server side
-SERVER_START_UP_TH = 4000.0											# <========= TO BE MODIFIED. TEST WITH DIFFERENT VALUES
+SERVER_START_UP_TH = 2000.0											# <========= TO BE MODIFIED. TEST WITH DIFFERENT VALUES
 # how user will start playing video (user buffer)
 USER_START_UP_TH = 2000.0
 # set a target latency, then use fast playing to compensate
@@ -71,12 +71,12 @@ else:
 	if IF_NEW:
 		LOG_FILE_DIR = './all_test_results'
 		LOG_FILE = LOG_FILE_DIR + '/naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's'
-		ALL_TESTING_DIR = '../../algorithms/all_results/'
+		ALL_TESTING_DIR = '../../benchmark_compare/all_results/'
 		ALL_TESTING_FILE = ALL_TESTING_DIR + 'naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's.txt'
 	else:
 		LOG_FILE_DIR = './all_test_results_old'
 		LOG_FILE = LOG_FILE_DIR + '/naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's'
-		ALL_TESTING_DIR = '../../algorithms/all_results_old/'
+		ALL_TESTING_DIR = '../../benchmark_compare/all_results_old/'
 		ALL_TESTING_FILE = ALL_TESTING_DIR + 'naive_' + str(int(SERVER_START_UP_TH/MS_IN_S)) + 's.txt'
 	
 
@@ -148,7 +148,7 @@ def t_main():
 
 	if not os.path.isdir(ALL_TESTING_DIR):
 		os.makedirs(ALL_TESTING_DIR)
-	all_testing_log = open(ALL_TESTING_FILE, 'wb')
+	all_testing_log = open(ALL_TESTING_FILE, 'w')
 
 	if IF_NEW:
 		cooked_times, cooked_bws, cooked_names = load.new_loadBandwidth(DATA_DIR)
@@ -169,9 +169,9 @@ def t_main():
 											start_up_th=SERVER_START_UP_TH, randomSeed=RANDOM_SEED)
 
 		initial_delay = server.get_time() - player.get_playing_time()	# This initial delay, cannot be reduced, all latency is calculated based on this
-		print initial_delay, cooked_name
+		print(initial_delay, cooked_name)
 		log_path = LOG_FILE + '_' + cooked_name
-		log_file = open(log_path, 'wb')
+		log_file = open(log_path, 'w')
 
 		init = 1
 		starting_time = server.get_time()	# Server starting time
@@ -199,7 +199,10 @@ def t_main():
 
 			naive_est_bw = predict_naive_tp(naive_tp_rec)
 			bit_rate = naive_choose_rate(naive_est_bw)
-			c_batch.append(np.abs(BITRATE[bit_rate] - BITRATE[last_bit_rate]))
+			if last_bit_rate == -1:
+				c_batch.append(0.0)
+			else:
+				c_batch.append(np.abs(BITRATE[bit_rate] - BITRATE[last_bit_rate]))
 			seg_freezing = 0.0	# For next seg
 			seg_wait = 0.0
 
@@ -246,7 +249,7 @@ def t_main():
 					# To sync player, enter start up phase, buffer becomes zero
 					sync_time, missing_count = server.sync_encoding_buffer()
 					# print "Missing chunks:", missing_count
-					print cooked_name
+					print(cooked_name)
 					player.sync_playing(sync_time)
 					buffer_length = player.get_buffer_length()
 
@@ -363,9 +366,9 @@ def main():
 										start_up_th=SERVER_START_UP_TH, randomSeed=RANDOM_SEED)
 
 	initial_delay = server.get_time() - player.get_playing_time()	# This initial delay, cannot be reduced, all latency is calculated based on this
-	print initial_delay
+	print(initial_delay)
 	log_path = LOG_FILE + '_' + TRACE_NAME
-	log_file = open(log_path, 'wb')
+	log_file = open(log_path, 'w')
 
 	init = 1
 	starting_time = server.get_time()	# Server starting time
@@ -377,7 +380,7 @@ def main():
 	# seg_freezing = 0.0
 
 	for i in range(TEST_DURATION):
-		print "Current index: ", i
+		print("Current index: ", i)
 		if init: 
 			if CHUNK_IN_SEG == 5:
 				ratio = np.random.uniform(RATIO_LOW_5, RATIO_HIGH_5)
@@ -433,7 +436,7 @@ def main():
 			# Disable sync for current situation
 			if sync:
 				if not IF_NEW:
-					print "Should not happen!"
+					print("Should not happen!")
 					break	# No resync here
 				# To sync player, enter start up phase, buffer becomes zero
 				sync_time, missing_count = server.sync_encoding_buffer()
